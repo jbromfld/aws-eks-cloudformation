@@ -26,14 +26,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: check eks
-      continue-on-error: true
-      id: check
-      run: |
-        aws eks describe-cluster --name ${{ env.stackName }}
-
     - name: deploy cloudformation stack
-      if: steps.check.outcome == 'failure'
       uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
       with:
         name: ${{ env.stackName }}
@@ -55,13 +48,14 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: change kubeconfig
+    - name: change kubeconfig and configmap
       continue-on-error: false
       run: |
-        aws eks update-kubeconfig --name testing-eks --region us-east-1
-        ROLEARN=$(aws cloudformation describe-stacks --stack-name testing-cf-stck --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
-        USERARN=$(aws cloudformation describe-stacks --stack-name testing-cf-stck --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
-        USERNAME=$(aws cloudformation describe-stacks --stack-name testing-cf-stck --query "Stacks[*].Outputs[?OutputKey=='UserName'].OutputValue" --output text)
+        CLUSTER_NAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)
+        aws eks update-kubeconfig --name $CLUSTER_NAME --region us-east-1
+        ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
+        USERARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
+        USERNAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserName'].OutputValue" --output text)
         export CONFIG_ROLEARN=$ROLEARN
         export CONFIG_USERARN=$USERARN
         export CONFIG_USERNAME=$USERNAME

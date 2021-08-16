@@ -270,3 +270,6 @@ Outputs:
   NodeRoleArn:
     Description: 'ARN for node service role'
     Value: !GetAtt iamNodeServiceRole.Arn
+  ClusterName:
+    Description: 'Cluster name'
+    Value: !Ref EksClusterName
