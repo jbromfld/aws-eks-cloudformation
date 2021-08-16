@@ -13,9 +13,18 @@ AWS_SECRET_ACCESS_KEY
 - `EksNodeGroupName`: Node group name
 ### Process flow
 - Running workflow `aws.yaml` will create a default batch user and an EKS cluster and update the aws-auth configmap.
-- Outputs will include user key and secret, which should then be given to batch users. These can be accessed through the AWS Cloudformation console (`Outputs` tab), or using the CLI by running:
+- Outputs will include user key and secret, which can be accessed through the AWS Cloudformation console (`Outputs` tab), or using the CLI by running:
 ```
 aws cloudformation describe-stacks --stack-name <stack_name> --region <region> --query "Stacks[*].Outputs[*]
 ```
-- After the stack has been created, the parameters can be edited in Github or through the AWS Console
+- Users should be given the credentials and requested to run the following commands from the CLI:
+```
+aws configure --profile personal
+    <access key>
+    <secret access key>
+    <region>
+    <output format>
+aws eks --profile personal update-kubeconfig --name <cluster_name> --region <region>
+```
+- After the stack has been created, the parameters can be edited in Github or through the AWS Console.
 - To delete the stack, run workflow `teardown.yaml`.
