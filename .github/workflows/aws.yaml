@@ -1,10 +1,10 @@
 on:
   workflow_dispatch:
-  push:
-    branches:
-    - master
-    paths:
-      - .github/workflows/aws.yaml
+  # push:
+  #   branches:
+  #   - master
+  #   paths:
+  #     - .github/workflows/aws.yaml
 
 name: aws cloudformation
 
@@ -30,7 +30,7 @@ jobs:
       continue-on-error: true
       id: check
       run: |
-        aws eks describe-cluster --name testing-eks
+        aws eks describe-cluster --name ${{ env.stackName }}
 
     - name: deploy cloudformation stack
       if: steps.check.outcome == 'failure'

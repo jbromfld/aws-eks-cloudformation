@@ -51,11 +51,11 @@ Parameters:
   DesiredSize:
     Description: 'Scaling configuration desired number of instances'
     Type: String
-    Default: 0
+    Default: 1
   MaxSize:
     Description: 'Scaling configuration maximum number of instances'
     Type: String
-    Default: 1
+    Default: 3
   CapacityType:
     Description: 'Capacity type for nodes. Options ON_DEMAND, SPOT'
     AllowedValues:
