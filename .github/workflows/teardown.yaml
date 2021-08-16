@@ -4,7 +4,7 @@ on:
 name: aws cloudformation teardown
 
 env:
-  stackName: testing-cf-stck
+  stackName: testing-cf-stack
 
 jobs:
   deploy:

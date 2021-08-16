@@ -1,0 +1,69 @@
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - master
+    paths:
+      - .github/workflows/aws.yaml
+
+name: aws cloudformation
+
+env:
+  stackName: testing-cf-stack
+
+jobs:
+  build:
+    name: create eks
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v2
+      
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: check eks
+      continue-on-error: true
+      id: check
+      run: |
+        aws eks describe-cluster --name testing-eks
+
+    - name: deploy cloudformation stack
+      if: steps.check.outcome == 'failure'
+      uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
+      with:
+        name: ${{ env.stackName }}
+        template: templates/awscf.yaml
+        capabilities: CAPABILITY_IAM, CAPABILITY_NAMED_IAM
+
+  deploy:
+    name: deploy to eks
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v2
+      
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: change kubeconfig
+      continue-on-error: false
+      run: |
+        aws eks update-kubeconfig --name testing-eks --region us-east-1
+        ROLEARN=$(aws cloudformation describe-stacks --stack-name testing-cf-stck --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
+        USERARN=$(aws cloudformation describe-stacks --stack-name testing-cf-stck --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
+        USERNAME=$(aws cloudformation describe-stacks --stack-name testing-cf-stck --query "Stacks[*].Outputs[?OutputKey=='UserName'].OutputValue" --output text)
+        export CONFIG_ROLEARN=$ROLEARN
+        export CONFIG_USERARN=$USERARN
+        export CONFIG_USERNAME=$USERNAME
+        kubectl delete configmap/aws-auth -n kube-system
+        kubectl apply -n kube-system -f cicd/awsconfigmap.yaml

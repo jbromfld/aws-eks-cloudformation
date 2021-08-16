@@ -1,0 +1,272 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: An EKS and Nodegroup template
+
+##################################### Parameters
+
+Parameters:
+  RolePrincipal:
+    Description: 'ARN of role principal for EKS creation'
+    Type: String
+    Default: 'arn:aws:iam::276146191806:user/jbromfield'
+  EksCidrBlock:
+    Description: 'EKS CIDR block range'
+    Type: String
+    Default: 10.0.0.0/16
+  EksSubnetBlocks:
+    Description: 'Subnet CIDR block ranges (comma separated)'
+    Type: CommaDelimitedList
+    Default: '10.0.0.0/24, 10.0.1.0/24'
+  EksSubnetAz:
+    Description: 'Subnet availability zone'
+    Type: CommaDelimitedList
+    Default: 'us-east-1a, us-east-1b'
+  SecIngressCidr:
+    Description: 'Ingress CIDR range'
+    Type: String
+    Default: 68.36.52.23/32
+  SecEgressCidr:
+    Description: 'Egress CIDR range'
+    Type: String
+    Default: 0.0.0.0/0
+  EksNodeInstance:
+    Description: 'Instance size'
+    Type: String
+    AllowedValues:
+      - t3.medium
+      - t2.medium
+      - t3.large
+    Default: t2.medium
+  EksNodeGroupName:
+    Description: 'EKS nodegroup name (if updating this must be changed)'
+    Type: String
+    Default: testing-eks-node-grp
+  EksClusterName:
+    Description: 'EKS cluster name'
+    Type: String
+    Default: testing-eks
+  MinSize:
+    Description: 'Scaling configuration minimum instances'
+    Type: String
+    Default: 1
+  DesiredSize:
+    Description: 'Scaling configuration desired number of instances'
+    Type: String
+    Default: 0
+  MaxSize:
+    Description: 'Scaling configuration maximum number of instances'
+    Type: String
+    Default: 1
+  CapacityType:
+    Description: 'Capacity type for nodes. Options ON_DEMAND, SPOT'
+    AllowedValues:
+      - ON_DEMAND
+      - SPOT
+    Type: String
+    Default: SPOT
+  BatchUser:
+    Description: 'Default username (use convention trainier-name-batch#-p3-access)'
+    Type: String
+    Default: trainer-name-batch-p3-access
+    
+######################################## Resources
+
+Resources:
+  eksVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref EksCidrBlock
+
+  eksSubnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn: eksVPC
+    Properties:
+      CidrBlock: !Select [0, !Ref EksSubnetBlocks]
+      AvailabilityZone: !Select [0, !Ref EksSubnetAz]
+      VpcId: !Ref eksVPC
+      MapPublicIpOnLaunch: true      
+
+  eksSubnet2:
+    Type: AWS::EC2::Subnet
+    DependsOn: eksVPC
+    Properties:
+      CidrBlock: !Select [1, !Ref EksSubnetBlocks]
+      AvailabilityZone: !Select [1, !Ref EksSubnetAz]
+      VpcId: !Ref eksVPC
+      MapPublicIpOnLaunch: true      
+
+  eksInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  eksInternetVPC:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: eksVPC
+    Properties:
+      InternetGatewayId: !Ref eksInternetGateway
+      VpcId: !Ref eksVPC
+
+  publicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref eksVPC
+  
+  publicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: eksInternetGateway
+    Properties:
+      RouteTableId: !Ref publicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref eksInternetGateway
+  
+  publicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref eksSubnet1
+      RouteTableId: !Ref publicRouteTable
+  
+  publicSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref eksSubnet2
+      RouteTableId: !Ref publicRouteTable
+  
+  eksSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: eksVPC
+    Properties:
+      GroupDescription: 'Security Group for EKS'
+      VpcId: !Ref eksVPC
+      SecurityGroupIngress:
+      - IpProtocol: -1
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !Ref SecEgressCidr
+      SecurityGroupEgress:
+      - IpProtocol: -1
+        FromPort: -1
+        ToPort: -1
+        CidrIp: !Ref SecEgressCidr
+
+  iamClusterServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: 'aaa-cluster-service-role'
+      RoleName: 'aaa-cluster-service-role'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - eks.amazonaws.com
+          Action:
+          - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            AWS: !Ref RolePrincipal
+          Action:
+            - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+      - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+      - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+  iamNodeServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: 'aaa-node-service-role'
+      RoleName: 'aaa-node-service-role'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+
+  eksCluster:
+    Type: AWS::EKS::Cluster
+    DependsOn: 
+    - eksSecurityGroup
+    - iamClusterServiceRole
+    Properties: 
+      Name: !Ref EksClusterName
+      Version: '1.19'
+      RoleArn: !GetAtt iamClusterServiceRole.Arn
+      ResourcesVpcConfig: 
+        SecurityGroupIds:
+          - !Ref eksSecurityGroup
+        SubnetIds:
+          - !Ref eksSubnet1
+          - !Ref eksSubnet2
+
+  eksNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    DependsOn:
+    - eksCluster
+    - iamNodeServiceRole
+    Properties:
+      NodegroupName: !Ref EksNodeGroupName
+      CapacityType: !Ref CapacityType
+      InstanceTypes:
+        - !Ref EksNodeInstance
+      ClusterName: !Ref eksCluster
+      NodeRole: !GetAtt iamNodeServiceRole.Arn
+      ScalingConfig:
+        MinSize: !Ref MinSize
+        DesiredSize: !Ref DesiredSize
+        MaxSize: !Ref MaxSize
+      Labels:
+        compute: 'eks-node'
+      Subnets:
+          - !Ref eksSubnet1
+          - !Ref eksSubnet2
+
+  batchUser:
+    Type: AWS::IAM::User
+    DependsOn:
+    - iamNodeServiceRole
+    - iamClusterServiceRole
+    Properties:
+      UserName: !Ref BatchUser
+      Policies:
+      - PolicyName: aaa-batch-user-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            Effect: Allow
+            Action:
+            - eks:AccessKubernetesApi
+            - eks:DescribeCluster
+            Resource: !GetAtt eksCluster.Arn
+
+  myAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName:
+        !Ref batchUser
+
+######################################## Outputs
+
+Outputs:
+  AccessKeyformyaccesskey:
+    Description: 'Access key for batch user'
+    Value: !Ref myAccessKey
+  SecretKeyformyaccesskey:
+    Description: 'Secret key for batch user'
+    Value: !GetAtt myAccessKey.SecretAccessKey
+  UserArn:
+    Description: 'ARN for batch user'
+    Value: !GetAtt batchUser.Arn
+  UserName:
+    Description: 'Username for batch user'
+    Value: !Ref BatchUser
+  NodeRoleArn:
+    Description: 'ARN for node service role'
+    Value: !GetAtt iamNodeServiceRole.Arn
