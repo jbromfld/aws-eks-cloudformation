@@ -7,7 +7,19 @@ Parameters:
   RolePrincipal:
     Description: 'ARN of role principal for EKS creation'
     Type: String
-    Default: 'arn:aws:iam::276146191806:user/jbromfield'
+    Default: '<change to admin user arn>'
+  EksNodeGroupName:
+    Description: 'EKS nodegroup name (if updating this must be changed)'
+    Type: String
+    Default: revature-eks-node-group
+  EksClusterName:
+    Description: 'EKS cluster name'
+    Type: String
+    Default: revature-eks-cluster
+  BatchUser:
+    Description: 'Default username (use convention trainier-name-batch#-p3-access)'
+    Type: String
+    Default: trainer-name-batch-p3-access
   EksCidrBlock:
     Description: 'EKS CIDR block range'
     Type: String
@@ -36,14 +48,6 @@ Parameters:
       - t2.medium
       - t3.large
     Default: t2.medium
-  EksNodeGroupName:
-    Description: 'EKS nodegroup name (if updating this must be changed)'
-    Type: String
-    Default: testing-eks-node-grp
-  EksClusterName:
-    Description: 'EKS cluster name'
-    Type: String
-    Default: testing-eks
   MinSize:
     Description: 'Scaling configuration minimum instances'
     Type: String
@@ -63,10 +67,6 @@ Parameters:
       - SPOT
     Type: String
     Default: SPOT
-  BatchUser:
-    Description: 'Default username (use convention trainier-name-batch#-p3-access)'
-    Type: String
-    Default: trainer-name-batch-p3-access
     
 ######################################## Resources
 
