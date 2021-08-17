@@ -58,9 +58,8 @@ jobs:
         aws-region: us-east-1
 
     - name: Change kubeconfig and configmap
-      with:
-        CLUSTER_NAME: ${{ steps.check.outputs.cluster }}
       run: |
+        CLUSTER_NAME=${{ steps.check.outputs.cluster }}
         aws eks update-kubeconfig --name $CLUSTER_NAME --region us-east-1
         ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
         USERARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
