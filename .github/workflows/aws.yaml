@@ -56,7 +56,7 @@ jobs:
         ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
         USERARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
         USERNAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserName'].OutputValue" --output text)
-        export CONFIG_ROLEARN=$ROLEARN
-        export CONFIG_USERARN=$USERARN
-        export CONFIG_USERNAME=$USERNAME
+        sed -i 'a/$CONFIG_ROLEARN/$ROLEARN/g' config/awsconfigmap.yaml
+        sed -i 'a/$CONFIG_USERARN/$USERARN/g' config/awsconfigmap.yaml
+        sed -i 'a/$CONFIG_USERNAME/$USERNAME/g' config/awsconfigmap.yaml
         kubectl apply -n kube-system -f config/awsconfigmap.yaml
