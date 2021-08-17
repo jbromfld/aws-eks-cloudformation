@@ -99,7 +99,9 @@ Resources:
 
   eksInternetVPC:
     Type: AWS::EC2::VPCGatewayAttachment
-    DependsOn: eksVPC
+    DependsOn: 
+    - eksVPC
+    - eksInternetGateway
     Properties:
       InternetGatewayId: !Ref eksInternetGateway
       VpcId: !Ref eksVPC

@@ -16,7 +16,7 @@ jobs:
     name: Create EKS
     runs-on: ubuntu-latest
     steps:
-    - name: checkout repo
+    - name: Checkout repo
       uses: actions/checkout@v2
       
     - name: Configure AWS credentials
@@ -26,7 +26,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: check eks
+    - name: Check eks
       continue-on-error: true
       id: check
       run: |
@@ -58,8 +58,9 @@ jobs:
         aws-region: us-east-1
 
     - name: Change kubeconfig and configmap
+      env:
+        CLUSTER_NAME: ${{ steps.check.outputs.cluster }}
       run: |
-        CLUSTER_NAME=${{ steps.check.outputs.cluster }}
         aws eks update-kubeconfig --name $CLUSTER_NAME --region us-east-1
         ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
         USERARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
