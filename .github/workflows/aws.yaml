@@ -42,6 +42,12 @@ jobs:
         template: templates/awscf.yaml
         capabilities: CAPABILITY_IAM, CAPABILITY_NAMED_IAM
 
+    - name: Check configmap
+      continue-on-error: true
+      id: checkconfig
+      run: |
+        kubectl delete configmap/aws-auth -n kube-system
+
     - name: Change kubeconfig and configmap
       env:
         CLUSTER_NAME: ${{ steps.check.outputs.cluster }}
@@ -53,5 +59,4 @@ jobs:
         export CONFIG_ROLEARN=$ROLEARN
         export CONFIG_USERARN=$USERARN
         export CONFIG_USERNAME=$USERNAME
-        kubectl delete configmap/aws-auth -n kube-system
         kubectl apply -n kube-system -f config/awsconfigmap.yaml
