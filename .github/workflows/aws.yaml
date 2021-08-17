@@ -53,10 +53,10 @@ jobs:
         CLUSTER_NAME: ${{ steps.check.outputs.cluster }}
       run: |
         aws eks update-kubeconfig --name $CLUSTER_NAME --region us-east-1
-        ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
+        ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='NodeRoleArn'].OutputValue" --output text)
         USERARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
         USERNAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserName'].OutputValue" --output text)
-        sed -i 'a/$CONFIG_ROLEARN/$ROLEARN/g' config/awsconfigmap.yaml
-        sed -i 'a/$CONFIG_USERARN/$USERARN/g' config/awsconfigmap.yaml
-        sed -i 'a/$CONFIG_USERNAME/$USERNAME/g' config/awsconfigmap.yaml
+        sed -i "s|CONFIG_ROLEARN|$ROLEARN|g" config/awsconfigmap.yaml
+        sed -i "s|CONFIG_USERARN|$USERARN|g" config/awsconfigmap.yaml
+        sed -i "s|CONFIG_USERNAME|$USERNAME|g" config/awsconfigmap.yaml
         kubectl apply -n kube-system -f config/awsconfigmap.yaml
