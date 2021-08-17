@@ -13,20 +13,29 @@ env:
 
 jobs:
   build:
-    name: create eks
+    name: Create EKS
     runs-on: ubuntu-latest
     steps:
     - name: checkout repo
       uses: actions/checkout@v2
       
-    - name: configure aws credentials
+    - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: deploy cloudformation stack
+    - name: check eks
+      continue-on-error: true
+      id: check
+      run: |
+        CLUSTER_NAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)
+        echo "::set-output name=cluster::$CLUSTER_NAME"
+        aws eks describe-cluster --name $CLUSTER_NAME
+
+    - name: Deploy cloudformation stack
+      if: steps.check.outcome == 'failure'
       uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
       with:
         name: ${{ env.stackName }}
@@ -34,24 +43,24 @@ jobs:
         capabilities: CAPABILITY_IAM, CAPABILITY_NAMED_IAM
 
   deploy:
-    name: deploy to eks
+    name: Update configuration
     runs-on: ubuntu-latest
     needs: build
     steps:
-    - name: checkout repo
+    - name: Checkout repo
       uses: actions/checkout@v2
       
-    - name: configure aws credentials
+    - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
-    - name: change kubeconfig and configmap
-      continue-on-error: false
+    - name: Change kubeconfig and configmap
+      with:
+        CLUSTER_NAME: ${{ steps.check.outputs.cluster }}
       run: |
-        CLUSTER_NAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)
         aws eks update-kubeconfig --name $CLUSTER_NAME --region us-east-1
         ROLEARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
         USERARN=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='UserArn'].OutputValue" --output text)
@@ -61,3 +70,5 @@ jobs:
         export CONFIG_USERNAME=$USERNAME
         kubectl delete configmap/aws-auth -n kube-system
         kubectl apply -n kube-system -f cicd/awsconfigmap.yaml
+
+#        CLUSTER_NAME=$(aws cloudformation describe-stacks --stack-name ${{ env.stackName }} --query "Stacks[*].Outputs[?OutputKey=='ClusterName'].OutputValue" --output text)
