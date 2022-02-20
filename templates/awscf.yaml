@@ -11,15 +11,15 @@ Parameters:
   EksNodeGroupName:
     Description: 'EKS nodegroup name (if updating this must be changed)'
     Type: String
-    Default: revature-eks-node-group
+    Default: default-eks-node-group
   EksClusterName:
     Description: 'EKS cluster name'
     Type: String
-    Default: revature-eks-cluster
+    Default: default-eks-cluster
   BatchUser:
     Description: 'Default username (use convention trainier-name-batch#-p3-access)'
     Type: String
-    Default: trainer-name-batch-p3-access
+    Default: default-user-access
   EksCidrBlock:
     Description: 'EKS CIDR block range'
     Type: String
@@ -44,10 +44,10 @@ Parameters:
     Description: 'Instance size'
     Type: String
     AllowedValues:
-      - t3.medium
+      - t2.standard
       - t2.medium
       - t3.large
-    Default: t2.medium
+    Default: t2.standard
   MinSize:
     Description: 'Scaling configuration minimum instances'
     Type: String
